@@ -43,8 +43,9 @@ class PkgConfig(SimpleCommand):
         super().__init__(env, name='pkg_config', env_var='PKG_CONFIG',
                          default='pkg-config')
 
-    def _call(self, cmd, name, type, static=False, msvc_syntax=False):
-        result = cmd + [name] + self._options[type][0]
+    def _call(self, cmd, name, type, static=False, msvc_syntax=False,
+              options=[]):
+        result = cmd + [name] + self._options[type][0] + options
         if static:
             result.append('--static')
         if msvc_syntax:
@@ -67,10 +68,11 @@ class PkgConfig(SimpleCommand):
 
 class PkgConfigPackage(Package):
     def __init__(self, name, format, specifier, kind, pkg_config, deps=None,
-                 search_path=None):
+                 search_path=None, extra_options=[]):
         super().__init__(name, format, deps)
         self._pkg_config = pkg_config
         self._env = {'PKG_CONFIG_PATH': search_path} if search_path else {}
+        self._extra_options = extra_options
 
         try:
             version = Version(self._call(name, 'version'))
@@ -86,7 +88,8 @@ class PkgConfigPackage(Package):
     @memoize
     def _call(self, *args, extra_env=None, **kwargs):
         final_env = dict(**self._env, **extra_env) if extra_env else self._env
-        return self._pkg_config.run(*args, extra_env=final_env, **kwargs)
+        return self._pkg_config.run(*args, extra_env=final_env,
+                                    options=self._extra_options, **kwargs)
 
     def _get_rpaths(self):
         extra_env = {'PKG_CONFIG_ALLOW_SYSTEM_LIBS': '1'}
@@ -177,9 +180,11 @@ class PkgConfigPackage(Package):
         )
 
 
-def resolve(env, name, format, version=None, kind=PackageKind.any):
+def resolve(env, name, format, version=None, kind=PackageKind.any,
+            search_path=None, extra_options=[]):
     package = PkgConfigPackage(name, format, version, kind,
-                               env.tool('pkg_config'))
+                               env.tool('pkg_config'), search_path=search_path,
+                               extra_options=extra_options)
     log.info('found package {!r} version {} via pkg-config in {}'
              .format(name, package.version, os.path.normpath(package.path())))
     return package

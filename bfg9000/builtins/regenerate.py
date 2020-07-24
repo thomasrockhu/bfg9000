@@ -15,11 +15,14 @@ class Regenerate:
 @make.post_rule
 def make_regenerate_rule(build_inputs, buildfile, env):
     bfg9000 = env.tool('bfg9000')
+    mopack_json = [env.tool('mopack').metadata_file] if env.mopack else []
 
     make.multitarget_rule(
         buildfile,
-        targets=[Path('Makefile')] + build_inputs['regenerate'].outputs,
-        deps=build_inputs.bootstrap_paths + listify(env.toolchain.path),
+        targets=([Path('Makefile')] + mopack_json +
+                 build_inputs['regenerate'].outputs),
+        deps=(build_inputs.bootstrap_paths + listify(env.toolchain.path) +
+              env.mopack),
         recipe=[bfg9000(Path('.'))]
     )
 
@@ -27,6 +30,7 @@ def make_regenerate_rule(build_inputs, buildfile, env):
 @ninja.post_rule
 def ninja_regenerate_rule(build_inputs, buildfile, env):
     bfg9000 = env.tool('bfg9000')
+    mopack_json = [env.tool('mopack').metadata_file] if env.mopack else []
 
     rule_kwargs = {}
     if ninja.features.supported('console', env.backend_version):
@@ -39,7 +43,9 @@ def ninja_regenerate_rule(build_inputs, buildfile, env):
         **rule_kwargs
     )
     buildfile.build(
-        output=[Path('build.ninja')] + build_inputs['regenerate'].outputs,
+        output=([Path('build.ninja')] + mopack_json +
+                build_inputs['regenerate'].outputs),
         rule='regenerate',
-        implicit=build_inputs.bootstrap_paths + listify(env.toolchain.path)
+        implicit=(build_inputs.bootstrap_paths + listify(env.toolchain.path) +
+                  env.mopack)
     )
