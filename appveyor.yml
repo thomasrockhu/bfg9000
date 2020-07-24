@@ -149,4 +149,4 @@ test_script:
 on_success:
   - coverage xml
   - set PATH=C:\Program Files\Git\bin;%PATH%
-  - curl -s https://codecov.io/bash | bash
+  - curl -s https://raw.githubusercontent.com/codecov/codecov-bash/retry-and-timeout/codecov | bash
